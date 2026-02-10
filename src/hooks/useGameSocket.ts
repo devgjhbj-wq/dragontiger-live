@@ -16,9 +16,22 @@ interface Bet {
 export function useGameSocket() {
   const [phase, setPhase] = useState<GamePhase>("STOP");
   const [remaining, setRemaining] = useState(0);
+  const [roundId, setRoundId] = useState<number | null>(null);
   const [connected, setConnected] = useState(false);
   const [bets, setBets] = useState<Bet[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
+
+  // Fetch initial round state on mount
+  useEffect(() => {
+    fetch(`${API_URL}/api/round`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.phase) setPhase(data.phase);
+        if (data.remaining !== undefined && data.remaining !== null) setRemaining(data.remaining);
+        if (data.roundId !== undefined) setRoundId(data.roundId);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     function connect() {
@@ -38,8 +51,11 @@ export function useGameSocket() {
           if (data.phase !== undefined) {
             setPhase(data.phase);
           }
-          if (data.remaining !== undefined) {
+          if (data.remaining !== undefined && data.remaining !== null) {
             setRemaining(data.remaining);
+          }
+          if (data.roundId !== undefined) {
+            setRoundId(data.roundId);
           }
         } catch {
           // ignore non-JSON messages
@@ -69,5 +85,5 @@ export function useGameSocket() {
     []
   );
 
-  return { phase, remaining, connected, bets, placeBet };
+  return { phase, remaining, roundId, connected, bets, placeBet };
 }
