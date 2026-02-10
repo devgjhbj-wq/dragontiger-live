@@ -1,24 +1,15 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const WS_URL = "wss://multiplayerbackend-jk7x.onrender.com";
 const API_URL = "https://multiplayerbackend-jk7x.onrender.com";
 
 export type GamePhase = "BETTING" | "STOP";
-export type BetChoice = "DRAGON" | "TIGER" | "TIE";
-
-interface Bet {
-  playerId: string;
-  choice: BetChoice;
-  amount: number;
-  phase: string;
-}
 
 export function useGameSocket() {
   const [phase, setPhase] = useState<GamePhase>("STOP");
-  const [remaining, setRemaining] = useState(0);
+  const [remaining, setRemaining] = useState<number | null>(null);
   const [roundId, setRoundId] = useState<number | null>(null);
   const [connected, setConnected] = useState(false);
-  const [bets, setBets] = useState<Bet[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
 
   // Fetch initial round state on mount
@@ -27,7 +18,7 @@ export function useGameSocket() {
       .then((res) => res.json())
       .then((data) => {
         if (data.phase) setPhase(data.phase);
-        if (data.remaining !== undefined && data.remaining !== null) setRemaining(data.remaining);
+        if (data.remaining !== undefined) setRemaining(data.remaining);
         if (data.roundId !== undefined) setRoundId(data.roundId);
       })
       .catch(() => {});
@@ -48,15 +39,9 @@ export function useGameSocket() {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data.phase !== undefined) {
-            setPhase(data.phase);
-          }
-          if (data.remaining !== undefined && data.remaining !== null) {
-            setRemaining(data.remaining);
-          }
-          if (data.roundId !== undefined) {
-            setRoundId(data.roundId);
-          }
+          if (data.phase !== undefined) setPhase(data.phase);
+          if (data.remaining !== undefined) setRemaining(data.remaining);
+          if (data.roundId !== undefined) setRoundId(data.roundId);
         } catch {
           // ignore non-JSON messages
         }
@@ -69,21 +54,5 @@ export function useGameSocket() {
     };
   }, []);
 
-  const placeBet = useCallback(
-    async (playerId: string, choice: BetChoice, amount: number) => {
-      const res = await fetch(`${API_URL}/api/bet`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ playerId, choice, amount }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setBets((prev) => [...prev, data.bet]);
-      }
-      return data;
-    },
-    []
-  );
-
-  return { phase, remaining, roundId, connected, bets, placeBet };
+  return { phase, remaining, roundId, connected };
 }
