@@ -1,12 +1,11 @@
 import { motion } from "framer-motion";
 import { useGameSocket } from "@/hooks/useGameSocket";
 import { GameTimer } from "@/components/GameTimer";
-import { BetPanel } from "@/components/BetPanel";
-import { BetHistory } from "@/components/BetHistory";
+import { RoundInfo } from "@/components/RoundInfo";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
 
 const Index = () => {
-  const { phase, remaining, connected, bets, placeBet } = useGameSocket();
+  const { phase, remaining, roundId, connected } = useGameSocket();
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
@@ -42,26 +41,16 @@ const Index = () => {
           transition={{ delay: 0.1 }}
           className="flex justify-center"
         >
-          <GameTimer remaining={remaining} phase={phase} />
+          <GameTimer remaining={remaining ?? 0} phase={phase} />
         </motion.div>
 
-        {/* Betting panel */}
+        {/* Round Info */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-card/60 backdrop-blur-xl border border-border rounded-2xl p-6"
         >
-          <BetPanel phase={phase} onPlaceBet={placeBet} />
-        </motion.div>
-
-        {/* History */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-        >
-          <BetHistory bets={bets} />
+          <RoundInfo roundId={roundId} phase={phase} />
         </motion.div>
       </div>
     </div>
