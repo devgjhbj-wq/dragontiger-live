@@ -12,16 +12,28 @@ export function useGameSocket() {
   const [connected, setConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
 
-  // Fetch initial round state on mount
+  // Fetch initial round state on mount with retry
   useEffect(() => {
-    fetch(`${API_URL}/api/round`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.phase) setPhase(data.phase);
-        if (data.remaining !== undefined) setRemaining(data.remaining);
-        if (data.roundId !== undefined) setRoundId(data.roundId);
-      })
-      .catch(() => {});
+    let cancelled = false;
+
+    function fetchRound() {
+      fetch(`${API_URL}/api/round`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (cancelled) return;
+          console.log("Initial round data:", data);
+          if (data.phase) setPhase(data.phase);
+          if (data.remaining !== undefined) setRemaining(data.remaining);
+          if (data.roundId !== undefined) setRoundId(data.roundId);
+        })
+        .catch((err) => {
+          console.warn("Failed to fetch round, retrying in 5s...", err);
+          if (!cancelled) setTimeout(fetchRound, 5000);
+        });
+    }
+
+    fetchRound();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -29,8 +41,12 @@ export function useGameSocket() {
       const ws = new WebSocket(WS_URL);
       wsRef.current = ws;
 
-      ws.onopen = () => setConnected(true);
+      ws.onopen = () => {
+        console.log("WebSocket connected");
+        setConnected(true);
+      };
       ws.onclose = () => {
+        console.log("WebSocket disconnected, reconnecting...");
         setConnected(false);
         setTimeout(connect, 3000);
       };
@@ -39,6 +55,7 @@ export function useGameSocket() {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          console.log("WS message:", data);
           if (data.phase !== undefined) setPhase(data.phase);
           if (data.remaining !== undefined) setRemaining(data.remaining);
           if (data.roundId !== undefined) setRoundId(data.roundId);
